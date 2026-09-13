@@ -28,10 +28,28 @@ The project should keep separate values for production and preview whenever an e
 
 ## Required environment variables
 
-Set these keys in Vercel for both Production and Preview before testing the full workflow:
+Connect the Supabase integration from the Vercel Marketplace before testing the
+full workflow. It synchronizes the Supabase connection variables into the linked
+Vercel project automatically.
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+The application reads:
+
+- Supabase URL: `SUPABASE_URL`, with `NEXT_PUBLIC_SUPABASE_URL` as fallback.
+- Supabase server key: `SUPABASE_SECRET_KEY`, with legacy `SUPABASE_SERVICE_ROLE_KEY` as fallback.
+
+The Supabase server key is required because the MVP writes to RLS-protected
+tables and a private Storage bucket from server routes. Do not replace it with a
+publishable or anon key.
+
+If one Supabase Marketplace resource is scoped to both Production and Preview,
+both deployment environments use the same database and Storage bucket. For
+strict data isolation, attach a separate Supabase project for Preview or override
+the Preview variables, scoped to the `develop` branch, with values from a
+development Supabase project.
+
+Set these non-Supabase keys in Vercel for both Production and Preview before
+testing the full workflow:
+
 - `SUPABASE_SUBMISSION_ASSETS_BUCKET`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
