@@ -65,8 +65,12 @@ testing the full workflow:
 - Preview: the preview deployment URL or a stable development domain if one is added later.
 
 Database migrations run automatically at the start of every Vercel build, before
-`next build`. The build fails if the migration fails. Configure these Vercel
-variables separately for Preview and Production:
+`next build`. The build fails if the migration fails. The Supabase Marketplace
+connection should provide `POSTGRES_URL_NON_POOLING` (preferred) or `POSTGRES_URL`
+in each Vercel environment. The migration uses that direct database URL first.
+
+If those variables are not available, configure these Vercel variables separately
+for Preview and Production:
 
 - `SUPABASE_PROJECT_REF`: the target Supabase project ref;
 - `SUPABASE_DB_PASSWORD`: the target project's database password.

@@ -8,17 +8,22 @@ if (process.env.VERCEL !== "1") {
 const projectRef = process.env.SUPABASE_PROJECT_REF;
 const databasePassword = process.env.SUPABASE_DB_PASSWORD;
 const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+const databaseUrl = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
 
-if (!projectRef || !databasePassword || !accessToken) {
+if (!databaseUrl && (!projectRef || !databasePassword || !accessToken)) {
   console.error(
-    "Supabase migrations require SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD and SUPABASE_ACCESS_TOKEN on Vercel."
+    "Supabase migrations require POSTGRES_URL_NON_POOLING (preferred), POSTGRES_URL, or the Supabase CLI credentials on Vercel."
   );
   process.exit(1);
 }
 
+const migrationArgs = databaseUrl
+  ? ["--db-url", databaseUrl]
+  : ["--project-ref", projectRef, "--password", databasePassword];
+
 const result = spawnSync(
   "npx",
-  ["--yes", "supabase@2.117.0", "db", "push", "--project-ref", projectRef, "--password", databasePassword, "--yes"],
+  ["--yes", "supabase@2.117.0", "db", "push", ...migrationArgs, "--yes"],
   { stdio: "inherit", env: process.env }
 );
 
