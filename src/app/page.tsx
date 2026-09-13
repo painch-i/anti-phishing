@@ -50,7 +50,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <SubmissionForm />
+        <div id="demande"><SubmissionForm /></div>
       </main>
 
       <footer className="site-footer">

@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import { MarketingPage } from "@/components/MarketingPage";
+
+export const metadata: Metadata = { title: "Point de contrôle anti-phishing pour les institutions", description: "Un parcours clair pour orienter les usagers et agents confrontés à un email, SMS, lien ou document suspect." };
+
+export default function InstitutionsPage() { return <MarketingPage eyebrow="Anti-phishing pour les institutions" title="Orientez les personnes face aux messages frauduleux." description="Une page ressource et un parcours de vérification faciles à partager dans un site, une campagne de prévention ou un dispositif d’accompagnement." audience="les institutions et associations" useCases={["Partager un lien dans une campagne de sensibilisation.", "Aider un usager face à un faux message administratif.", "Compléter une FAQ ou un guide de prévention.", "Centraliser les demandes nécessitant un avis humain."]} faq={[{ question: "Peut-on partager cette page ?", answer: "Oui. Les pages sont conçues pour être liées depuis un guide, une campagne ou une page d’aide." }, { question: "Que doit faire une personne en cas de doute ?", answer: "Ne pas cliquer ni répondre, puis transmettre les éléments disponibles pour obtenir un avis prudent." }]} />; }

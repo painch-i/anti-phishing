@@ -8,7 +8,6 @@ import {
   MAX_FILES,
   MAX_FILE_SIZE_BYTES,
   MAX_TOTAL_FILE_SIZE_BYTES,
-  MAX_URLS,
   formatBytes
 } from "@/lib/submission-constraints";
 import type { ValidationErrors } from "@/lib/submission-validation";
@@ -36,7 +35,7 @@ function fieldError(errors: ValidationErrors | undefined, field: string) {
   return <p className="field-error">{messages.join(" ")}</p>;
 }
 
-export function SubmissionForm() {
+export function SubmissionForm({ contentLabel = "Lien suspect", contentHint = "Un lien par ligne, 10 maximum." }: { contentLabel?: string; contentHint?: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [response, setResponse] = useState<SubmissionResponse | null>(null);
@@ -119,7 +118,7 @@ export function SubmissionForm() {
       </div>
 
       <div className="field">
-        <label htmlFor="urls">Lien suspect</label>
+        <label htmlFor="urls">{contentLabel}</label>
         <textarea
           className="textarea"
           id="urls"
@@ -127,7 +126,7 @@ export function SubmissionForm() {
           placeholder="https://exemple-suspect.test"
           rows={3}
         />
-        <small>Un lien par ligne, {MAX_URLS} maximum.</small>
+        <small>{contentHint}</small>
         {fieldError(response && !response.ok ? response.errors : undefined, "urls")}
       </div>
 

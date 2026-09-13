@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import { MarketingPage } from "@/components/MarketingPage";
+
+export const metadata: Metadata = { title: "Vérification anti-phishing pour les entreprises", description: "Donnez à vos équipes un point de contrôle simple pour analyser un email, lien ou document suspect avant une action sensible." };
+
+export default function BusinessPage() { return <MarketingPage eyebrow="Anti-phishing pour les entreprises" title="Aidez vos équipes à décider avant le clic." description="Un canal simple pour faire examiner les messages suspects qui contournent les réflexes habituels : fraude au président, faux fournisseur, compte compromis ou demande urgente." audience="les équipes et entreprises" useCases={["Qualifier un email de fournisseur avant un changement de RIB.", "Obtenir un avis sur une demande urgente de paiement.", "Accompagner un collaborateur qui a cliqué ou hésite.", "Créer un lien d’aide à intégrer dans vos procédures internes."]} faq={[{ question: "À qui s’adresse le service ?", answer: "Aux équipes qui ont besoin d’un avis humain ponctuel sur un contenu suspect, en complément de leurs outils et procédures de sécurité." }, { question: "Les demandes sont-elles publiques ?", answer: "Non. Les éléments transmis sont stockés de manière privée et ne sont accessibles aux autres visiteurs." }]} />; }

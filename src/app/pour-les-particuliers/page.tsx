@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import { MarketingPage } from "@/components/MarketingPage";
+
+export const metadata: Metadata = { title: "Vérifier un SMS, email ou lien suspect", description: "Vous avez reçu un message étrange ? Faites vérifier gratuitement les éléments suspects avant de cliquer, payer ou répondre." };
+
+export default function IndividualsPage() { return <MarketingPage eyebrow="Anti-phishing pour les particuliers" title="Un message vous paraît suspect ? Vérifiez avant d’agir." description="Banque, livraison, impôts, assurance ou proche : transmettez le SMS, l’email, le lien ou la capture d’écran qui vous inquiète." audience="les particuliers" useCases={["Un SMS demande vos identifiants ou un paiement urgent.", "Un email contient une pièce jointe ou un lien inattendu.", "Un proche semble vous demander de l’argent ou un code.", "Vous voulez un second avis avant de répondre."]} faq={[{ question: "Que puis-je envoyer ?", answer: "Un email, SMS, lien, capture d’écran, document ou le contexte de la demande. N’ouvrez pas les pièces jointes douteuses pour les transmettre." }, { question: "Est-ce une garantie de sécurité ?", answer: "Non. L’avis porte sur les éléments transmis et ne constitue pas une certification absolue." }]} />; }

@@ -1,0 +1,5 @@
+import type { Metadata } from "next";
+import { VerificationPage } from "@/components/VerificationPage";
+
+export const metadata: Metadata = { title: "Vérifier un email suspect", description: "Analysez un email suspect avant de cliquer, répondre ou transmettre vos informations." };
+export default function Page() { return <VerificationPage eyebrow="Vérification d’email" title="Vérifier un email suspect avant de répondre" description="Copiez le contenu du message ou joignez-le avec son contexte. Un opérateur vous donnera un avis clair par email." contentLabel="Texte de l’email ou adresse du lien" contentHint="Copiez le message, ses liens, ou ajoutez un fichier .eml/.msg." guidance={<>Transmettez l’email complet si possible, y compris l’adresse de l’expéditeur et les liens visibles. Ne répondez pas au message suspect.</>} questions={[{ question: "Puis-je envoyer une capture d’écran ?", answer: "Oui, les captures d’écran et fichiers d’email sont acceptés." }, { question: "L’analyse certifie-t-elle l’expéditeur ?", answer: "Non. L’avis est fondé sur les éléments transmis et reste prudent." }]} />; }
