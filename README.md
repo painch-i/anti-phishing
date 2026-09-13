@@ -103,6 +103,16 @@ Le formulaire accepte au maximum :
 
 Les liens transmis ne sont pas ouverts automatiquement dans l’admin. Les fichiers restent privés et sont accessibles à l’opérateur par URL signée temporaire.
 
+## Déploiement
+
+Le projet est déployé par l’intégration GitHub de Vercel :
+
+- `main` déclenche la production ;
+- `develop` et les pull requests déclenchent des déploiements Preview utilisés comme environnement de dev ;
+- les variables Vercel doivent être configurées séparément pour Production et Preview.
+
+Le déploiement production direct depuis le CLI (`vercel deploy --prod`) n’est pas le workflow normal. Voir [`docs/deployment.md`](docs/deployment.md).
+
 ## Méthodologie de développement
 
 Le projet est conçu pour pouvoir être développé et maintenu **principalement par langage naturel, via des agents de code**.
