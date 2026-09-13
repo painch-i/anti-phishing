@@ -14,6 +14,35 @@ La propreté, la lisibilité, la cohérence et la maintenabilité ne sont pas op
 
 Ne jamais sacrifier durablement la qualité du code pour gagner quelques minutes sur une implémentation.
 
+## Une tâche n’est qu’une goutte d’eau dans le projet
+
+**La tâche en cours de l’agent n’est qu’une goutte d’eau dans l’océan de la vie du projet.**
+
+L’agent ne doit jamais optimiser le dépôt autour de sa mission ponctuelle, comme si celle-ci était le centre du logiciel. Il doit au contraire intervenir avec précision dans un système qui existait avant lui et continuera d’évoluer longtemps après lui.
+
+Une bonne intervention doit être **locale, proportionnée, précise et oubliable**.
+
+"Oubliable" signifie qu’une fois la tâche terminée, personne ne devrait avoir besoin de se souvenir :
+
+- de quel agent l’a réalisée ;
+- du prompt qui a déclenché le changement ;
+- des raisonnements intermédiaires ;
+- d’un contexte implicite présent uniquement dans la conversation ;
+- d’exceptions ou de conventions spéciales inventées uniquement pour cette tâche.
+
+Le résultat doit se fondre naturellement dans le projet. Le code, les tests, les noms, les types et la documentation doivent suffire à expliquer ce qui existe et pourquoi.
+
+L’agent doit donc chercher à laisser **le moins d’empreinte conceptuelle possible** : pas de nouvelle architecture pour une petite feature, pas de couche générique pour un besoin unique, pas de convention parallèle, pas d’abstraction nommée d’après le problème temporaire si un concept métier stable existe déjà.
+
+Chaque changement doit être évalué à deux échelles :
+
+1. **La tâche locale** : est-ce que le besoin demandé est correctement résolu ?
+2. **Le projet global** : est-ce que cette solution reste naturelle si des centaines d’autres changements sont ajoutés ensuite ?
+
+Si une solution facilite la tâche actuelle mais rend le système plus étrange, plus couplé ou plus difficile à comprendre pour les prochaines tâches, elle est probablement mauvaise.
+
+L’objectif est qu’un futur agent puisse rencontrer le code modifié sans remarquer qu’une intervention particulière a eu lieu : il doit simplement voir un projet cohérent.
+
 ## Le dépôt est la mémoire du projet
 
 Ne jamais considérer la conversation en cours comme une source de vérité durable.
@@ -196,7 +225,9 @@ Une tâche peut être considérée comme terminée lorsque :
 4. le lint, le typage et le build passent lorsqu’ils sont disponibles ;
 5. aucun code mort ou debug temporaire n’a été laissé ;
 6. la documentation nécessaire a été mise à jour ;
-7. un futur agent peut comprendre le changement depuis le dépôt seul.
+7. un futur agent peut comprendre le changement depuis le dépôt seul ;
+8. la solution ne dépend d’aucun contexte propre à la conversation qui l’a produite ;
+9. le changement se fond dans le projet au point de pouvoir être oublié comme intervention distincte.
 
 ## Règle finale
 
