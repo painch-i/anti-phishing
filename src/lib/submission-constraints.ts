@@ -32,6 +32,26 @@ export const ACCEPTED_FILE_EXTENSIONS = [
   ".webp"
 ];
 
+const fileTypesByExtension: Record<string, string> = {
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  eml: "message/rfc822",
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  msg: "application/vnd.ms-outlook",
+  pdf: "application/pdf",
+  png: "image/png",
+  txt: "text/plain",
+  webp: "image/webp"
+};
+
+export function getFileContentType(file: File): string {
+  return ACCEPTED_FILE_TYPES.includes(file.type)
+    ? file.type
+    : fileTypesByExtension[file.name.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;

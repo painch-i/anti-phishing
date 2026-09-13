@@ -4,6 +4,8 @@
 
 Accepted
 
+Authentication and database access are superseded by [ADR 0002](0002-supabase-auth-rls.md).
+
 ## Context
 
 The MVP must support an end-to-end human triage workflow: public submission, private storage, operator review, verdict recording, and email delivery. The repository starts from a product specification, without an existing application stack.

@@ -8,7 +8,8 @@ import type { SubmissionAssetRow, SubmissionRow } from "@/lib/database.types";
 import { type Verdict } from "@/lib/domain";
 import { sendVerdictEmail } from "@/lib/email";
 import { createPublicReference } from "@/lib/reference";
-import { getSupabaseAdminClient, submissionAssetsBucket } from "@/lib/supabase";
+import { getSupabaseClient, submissionAssetsBucket, type SupabaseClient } from "@/lib/supabase";
+import { getFileContentType } from "@/lib/submission-constraints";
 import type { SubmissionInput } from "@/lib/submission-validation";
 
 export type SubmissionWithAssets = SubmissionRow & {
@@ -33,8 +34,7 @@ function safeFileName(fileName: string): string {
   return cleaned || fallback;
 }
 
-async function createSubmissionRow(input: SubmissionInput): Promise<SubmissionRow> {
-  const supabase = getSupabaseAdminClient();
+async function createSubmissionRow(supabase: SupabaseClient, input: SubmissionInput): Promise<SubmissionRow> {
   let lastError: PostgrestError | null = null;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -45,7 +45,8 @@ async function createSubmissionRow(input: SubmissionInput): Promise<SubmissionRo
         response_email: input.responseEmail,
         submitted_text: input.submittedText,
         submitted_urls: input.submittedUrls,
-        context: input.context
+        context: input.context,
+        intake_completed_at: null
       })
       .select("*")
       .single();
@@ -55,34 +56,27 @@ async function createSubmissionRow(input: SubmissionInput): Promise<SubmissionRo
     }
 
     lastError = error;
+
+    if (error?.code !== "23505") {
+      break;
+    }
   }
 
   throwPostgrest(lastError);
   throw new Error("Unable to create submission.");
 }
 
-async function uploadAsset(submissionId: string, file: File): Promise<SubmissionAssetRow> {
-  const supabase = getSupabaseAdminClient();
+async function reserveAsset(supabase: SupabaseClient, submission: SubmissionRow, file: File): Promise<SubmissionAssetRow> {
   const assetId = randomUUID();
   const fileName = safeFileName(file.name);
-  const storagePath = `${submissionId}/${assetId}-${fileName}`;
-  const contentType = file.type || "application/octet-stream";
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-  const uploadResult = await supabase.storage.from(submissionAssetsBucket).upload(storagePath, fileBuffer, {
-    contentType,
-    upsert: false
-  });
-
-  if (uploadResult.error) {
-    throw new Error(uploadResult.error.message);
-  }
+  const storagePath = `${submission.submitted_by}/${submission.id}/${assetId}-${fileName}`;
+  const contentType = getFileContentType(file);
 
   const { data, error } = await supabase
     .from("submission_assets")
     .insert({
       id: assetId,
-      submission_id: submissionId,
+      submission_id: submission.id,
       file_name: file.name || fileName,
       content_type: contentType,
       size_bytes: file.size,
@@ -100,34 +94,52 @@ async function uploadAsset(submissionId: string, file: File): Promise<Submission
   return data;
 }
 
-export async function createSubmission(input: SubmissionInput): Promise<SubmissionRow> {
-  const submission = await createSubmissionRow(input);
-  const uploadedAssets: SubmissionAssetRow[] = [];
+export async function createSubmission(supabase: SupabaseClient, input: SubmissionInput): Promise<Pick<SubmissionRow, "public_reference">> {
+  const submission = await createSubmissionRow(supabase, input);
+  const reservedAssets: SubmissionAssetRow[] = [];
 
   try {
     for (const file of input.files) {
-      uploadedAssets.push(await uploadAsset(submission.id, file));
+      const asset = await reserveAsset(supabase, submission, file);
+      reservedAssets.push(asset);
+      const { error } = await supabase.storage.from(submissionAssetsBucket).upload(
+        asset.storage_path,
+        Buffer.from(await file.arrayBuffer()),
+        { contentType: asset.content_type, upsert: false }
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
     }
+
+    const { error } = await supabase.rpc("complete_submission", { submission_id: submission.id });
+    throwPostgrest(error);
   } catch (error) {
-    const supabase = getSupabaseAdminClient();
-    const uploadedPaths = uploadedAssets.map((asset) => asset.storage_path);
+    // Keep reservations until Storage cleanup finishes: its policies use them.
+    const uploadedPaths = reservedAssets.map((asset) => asset.storage_path);
 
     if (uploadedPaths.length > 0) {
-      await supabase.storage.from(submissionAssetsBucket).remove(uploadedPaths);
+      const { error: cleanupError } = await supabase.storage.from(submissionAssetsBucket).remove(uploadedPaths);
+
+      if (cleanupError) {
+        throw error;
+      }
     }
 
     await supabase.from("submissions").delete().eq("id", submission.id);
     throw error;
   }
 
-  return submission;
+  return { public_reference: submission.public_reference };
 }
 
 export async function listSubmissions(): Promise<SubmissionRow[]> {
-  const supabase = getSupabaseAdminClient();
+  const supabase = await getSupabaseClient();
   const { data, error } = await supabase
     .from("submissions")
     .select("*")
+    .not("intake_completed_at", "is", null)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -136,12 +148,13 @@ export async function listSubmissions(): Promise<SubmissionRow[]> {
   return data ?? [];
 }
 
-export async function getSubmissionWithAssets(id: string): Promise<SubmissionWithAssets | null> {
-  const supabase = getSupabaseAdminClient();
+export async function getSubmissionWithAssets(id: string, client?: SupabaseClient): Promise<SubmissionWithAssets | null> {
+  const supabase = client ?? await getSupabaseClient();
   const { data: submission, error } = await supabase
     .from("submissions")
     .select("*")
     .eq("id", id)
+    .not("intake_completed_at", "is", null)
     .single();
 
   if (error?.code === "PGRST116") {
@@ -169,7 +182,7 @@ export async function getSubmissionWithAssets(id: string): Promise<SubmissionWit
 }
 
 export async function createSignedAssetUrl(path: string): Promise<string> {
-  const supabase = getSupabaseAdminClient();
+  const supabase = await getSupabaseClient();
   const { data, error } = await supabase.storage
     .from(submissionAssetsBucket)
     .createSignedUrl(path, 5 * 60, { download: true });
@@ -181,13 +194,12 @@ export async function createSignedAssetUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-export async function recordVerdictAndSendEmail(input: {
+export async function recordVerdictAndSendEmail(supabase: SupabaseClient, input: {
   submissionId: string;
   verdict: Verdict;
   explanation: string | null;
 }): Promise<void> {
-  const supabase = getSupabaseAdminClient();
-  const submission = await getSubmissionWithAssets(input.submissionId);
+  const submission = await getSubmissionWithAssets(input.submissionId, supabase);
 
   if (!submission) {
     throw new Error("Submission not found.");
@@ -203,7 +215,9 @@ export async function recordVerdictAndSendEmail(input: {
       reviewed_at: reviewedAt,
       email_last_error: null
     })
-    .eq("id", input.submissionId);
+    .eq("id", input.submissionId)
+    .select("id")
+    .single();
 
   throwPostgrest(updateError);
 

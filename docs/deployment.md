@@ -35,25 +35,27 @@ Vercel project automatically.
 The application reads:
 
 - Supabase URL: `SUPABASE_URL`, with `NEXT_PUBLIC_SUPABASE_URL` as fallback.
-- Supabase server key: `SUPABASE_SECRET_KEY`, with legacy `SUPABASE_SERVICE_ROLE_KEY` as fallback.
+- Supabase public key: `SUPABASE_PUBLISHABLE_KEY`, then
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, or
+  `SUPABASE_ANON_KEY` as fallbacks.
 
-The Supabase server key is required because the MVP writes to RLS-protected
-tables and a private Storage bucket from server routes. Do not replace it with a
-publishable or anon key.
+The application sends the current user's Supabase session with the public key.
+Tables and the private `submission-assets` bucket enforce RLS. No secret or
+service-role key is used by application code. Integration-provided `POSTGRES_*`
+and secret keys are not needed at runtime.
 
-If one Supabase Marketplace resource is scoped to both Production and Preview,
-both deployment environments use the same database and Storage bucket. For
-strict data isolation, attach a separate Supabase project for Preview or override
-the Preview variables, scoped to the `develop` branch, with values from a
-development Supabase project.
+The configured resources are separate:
+
+- Production: `supabase`, project `ukcyborroymsjxavrqdt`.
+- Preview/Development: `anti-phishing-dev`, project `arjpmwywkmppbzeirsss`.
+
+Each resource injects its own variables through the Marketplace connection. Keep
+these connections scoped to their respective environments. Supabase's optional
+preview-branch action is not needed for this shared dev project.
 
 Set these non-Supabase keys in Vercel for both Production and Preview before
 testing the full workflow:
 
-- `SUPABASE_SUBMISSION_ASSETS_BUCKET`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-- `ADMIN_SESSION_SECRET`
 - `RESEND_API_KEY`
 - `RESEND_FROM`
 
@@ -61,6 +63,26 @@ testing the full workflow:
 
 - Production: the production domain, for example `https://anti-phishing.vercel.app`;
 - Preview: the preview deployment URL or a stable development domain if one is added later.
+
+Database migrations run automatically at the start of every Vercel build, before
+`next build`. The build fails if the migration fails. Configure these Vercel
+variables separately for Preview and Production:
+
+- `SUPABASE_PROJECT_REF`: the target Supabase project ref;
+- `SUPABASE_DB_PASSWORD`: the target project's database password.
+- `SUPABASE_ACCESS_TOKEN`: a Supabase access token usable by the CLI.
+
+Preview must point to the development project and Production to the
+production project. Vercel's environment isolation is therefore part of the
+database safety boundary; never put the production values in the Preview scope.
+
+Before deploying the Auth/RLS change, enable anonymous sign-ins and provision an
+operator. See [authentication operations](authentication.md).
+
+Vercel can redact sensitive integration variables during `env pull`. Empty or
+`[SENSITIVE]` values are not usable credentials. For local development, retrieve
+only the dev project's URL and publishable key from its dashboard into a
+gitignored `.env.local`; do not copy the production secret key.
 
 ## Normal release flow
 

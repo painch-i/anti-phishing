@@ -35,9 +35,10 @@ Le produit reste volontairement prudent : aucun verdict n’est présenté comme
 - Supabase Postgres pour les demandes ;
 - Supabase Storage privé pour les fichiers transmis ;
 - Resend pour les emails transactionnels ;
-- authentification admin simple par cookie signé.
+- Supabase Auth pour les sessions et RLS pour les droits sur les données et fichiers.
 
 La décision d’architecture initiale est documentée dans [`docs/adr/0001-mvp-stack.md`](docs/adr/0001-mvp-stack.md).
+L’authentification et les autorisations sont décrites dans [`docs/adr/0002-supabase-auth-rls.md`](docs/adr/0002-supabase-auth-rls.md).
 
 ## Installation
 
@@ -56,37 +57,38 @@ Voir [`.env.example`](.env.example).
 Variables obligatoires :
 
 - `SUPABASE_URL` ou `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SECRET_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-- `ADMIN_SESSION_SECRET`
+- `SUPABASE_PUBLISHABLE_KEY` ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  (compatibilité : `NEXT_PUBLIC_SUPABASE_ANON_KEY` ou `SUPABASE_ANON_KEY`)
 - `RESEND_API_KEY`
 - `RESEND_FROM`
 
-`SUPABASE_SUBMISSION_ASSETS_BUCKET` vaut `submission-assets` par défaut.
+Le bucket privé `submission-assets` est défini par les migrations et leurs policies.
 
 Avec l’intégration Supabase du Vercel Marketplace, les variables Supabase sont
-synchronisées automatiquement dans Vercel. L’application utilise une clé serveur
-Supabase (`SUPABASE_SECRET_KEY` ou l’ancien `SUPABASE_SERVICE_ROLE_KEY`) pour
-écrire côté serveur malgré les tables sous RLS et le bucket privé. Les clés
-publishable/anon (`SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-ne doivent pas être utilisées pour ces opérations admin.
+synchronisées automatiquement dans Vercel. L’application utilise la clé publique
+avec la session Supabase du visiteur ou de l’opérateur. Elle ne lit aucune clé
+secrète/service-role et n’utilise plus de variables `ADMIN_*`.
 
 ## Base de données
 
-Appliquer la migration Supabase :
+Appliquer les migrations Supabase au projet de dev en premier :
 
 ```bash
 supabase db push
 ```
 
-La migration crée :
+Les migrations créent :
 
 - `public.submissions`
 - `public.submission_assets`
+- `public.admin_users` et les policies RLS
 - le bucket privé `submission-assets`
 
-L’application utilise la service role key uniquement côté serveur. Les visiteurs n’ont pas d’accès direct aux tables ou au bucket.
+Activer les connexions anonymes dans Supabase Auth et créer le premier opérateur
+selon [`docs/authentication.md`](docs/authentication.md). Le visiteur n’a aucun
+compte à créer : une session anonyme limite ses droits à la préparation de son
+dépôt, pendant 15 minutes. Après envoi, seuls les opérateurs autorisés peuvent
+consulter la demande et ses fichiers.
 
 ## Commandes
 
@@ -97,6 +99,10 @@ npm run typecheck
 npm run test
 npm run build
 ```
+
+Les tests exécutent les migrations et les RLS dans PostgreSQL embarqué (PGlite),
+sans Docker ni identifiants cloud. Les services Auth et Storage doivent également
+être vérifiés sur la Preview avant une mise en production.
 
 ## Limites MVP
 
