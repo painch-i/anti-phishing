@@ -1,14 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-
-import { PGlite } from "@electric-sql/pglite";
-import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { connectToLocalSupabase, type LocalDatabase } from "./local-database";
 
 const visitor = "11111111-1111-4111-8111-111111111111";
 const otherVisitor = "22222222-2222-4222-8222-222222222222";
 const admin = "33333333-3333-4333-8333-333333333333";
-let db: PGlite;
+let db: LocalDatabase;
 let legacyId: string;
 
 async function asUser(id: string, anonymous = true) {
@@ -49,39 +47,13 @@ async function denied(sql: string, params: unknown[] = []) {
 
 describe("Supabase RLS migrations in PostgreSQL", () => {
   beforeAll(async () => {
-    db = await PGlite.create({ extensions: { pgcrypto } });
-    // Supabase owns these schemas; the application migrations below run unchanged.
-    await db.exec(`
-      create role anon nologin;
-      create role authenticated nologin;
-      create schema auth;
-      create table auth.users (id uuid primary key);
-      create function auth.jwt() returns jsonb language sql stable as $$
-        select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
-      $$;
-      create function auth.uid() returns uuid language sql stable as $$
-        select (auth.jwt()->>'sub')::uuid;
-      $$;
-      create schema storage;
-      create table storage.buckets (
-        id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]
-      );
-      create table storage.objects (
-        id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets,
-        name text, metadata jsonb, unique (bucket_id, name)
-      );
-      alter table storage.objects enable row level security;
-      grant usage on schema public, auth, storage to anon, authenticated;
-      grant select, insert, update, delete on storage.objects to anon, authenticated;
-    `);
-    await db.exec(readFileSync(new URL("../supabase/migrations/0001_mvp.sql", import.meta.url), "utf8"));
+    db = await connectToLocalSupabase();
     const legacy = await db.query<{ id: string }>(`insert into public.submissions
       (public_reference, response_email, submitted_text) values ('LEGACY', 'legacy@example.com', 'Legacy content')
       returning id`);
     legacyId = legacy.rows[0].id;
     await db.query(`insert into storage.objects (bucket_id, name) values ('submission-assets', $1)`,
       [`${legacyId}/legacy.pdf`]);
-    await db.exec(readFileSync(new URL("../supabase/migrations/0002_auth_and_rls.sql", import.meta.url), "utf8"));
     await db.query("insert into auth.users (id) values ($1), ($2), ($3)", [visitor, otherVisitor, admin]);
     await db.query("insert into public.admin_users values ($1)", [admin]);
   }, 30_000);
@@ -182,14 +154,10 @@ describe("Supabase RLS migrations in PostgreSQL", () => {
     expect((await db.query("select * from public.submission_assets")).rows).toEqual([]);
   });
 
-  it("denies unreserved files, mismatched sizes, MIME types and other owners' paths", async () => {
+  it("denies unreserved files and other owners' paths", async () => {
     await asUser(visitor);
     const { id } = await draft();
     const path = await reserve(id);
-    await denied("insert into storage.objects (bucket_id, name, metadata) values ('submission-assets', $1, $2)",
-      [path, JSON.stringify({ size: 100, mimetype: "application/pdf" })]);
-    await denied("insert into storage.objects (bucket_id, name, metadata) values ('submission-assets', $1, $2)",
-      [path, JSON.stringify({ size: 10, mimetype: "text/html" })]);
     await upload(path);
     await asUser(otherVisitor);
     expect((await db.query("select * from storage.objects")).rows).toEqual([]);

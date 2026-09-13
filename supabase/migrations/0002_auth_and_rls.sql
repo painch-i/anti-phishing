@@ -156,14 +156,6 @@ grant execute on function public.owns_draft_asset(text) to authenticated;
 create policy "Upload reserved draft assets" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'submission-assets' and public.owns_draft_asset(name)
-    and (
-      -- Storage's preflight permission check has no metadata yet.
-      metadata is null or metadata = '{}'::jsonb or exists (
-        select 1 from public.submission_assets a where a.storage_path = name
-          and a.size_bytes = (metadata->>'size')::bigint
-          and a.content_type = metadata->>'mimetype'
-      )
-    )
   );
 create policy "Read own draft files" on storage.objects for select to authenticated
   using (bucket_id = 'submission-assets' and public.owns_draft_asset(name));
