@@ -57,7 +57,7 @@ Set these non-Supabase keys in Vercel for both Production and Preview before
 testing the full workflow:
 
 - `RESEND_API_KEY`
-- `RESEND_FROM`
+- `RESEND_FROM` or `RESEND_EMAIL_DOMAIN` (the latter derives `security@<domain>`)
 
 `NEXT_PUBLIC_APP_URL` may differ per environment:
 

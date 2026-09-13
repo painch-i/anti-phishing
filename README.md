@@ -60,7 +60,7 @@ Variables obligatoires :
 - `SUPABASE_PUBLISHABLE_KEY` ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
   (compatibilité : `NEXT_PUBLIC_SUPABASE_ANON_KEY` ou `SUPABASE_ANON_KEY`)
 - `RESEND_API_KEY`
-- `RESEND_FROM`
+- `RESEND_FROM` ou `RESEND_EMAIL_DOMAIN` (l’adresse `security@<domain>` est utilisée automatiquement dans le second cas)
 
 Le bucket privé `submission-assets` est défini par les migrations et leurs policies.
 
