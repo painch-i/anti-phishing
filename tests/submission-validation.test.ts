@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_FILE_SIZE_BYTES } from "@/lib/submission-constraints";
+import { getFileContentType, MAX_FILE_SIZE_BYTES } from "@/lib/submission-constraints";
 import { validateSubmissionFormData } from "@/lib/submission-validation";
 
 function baseFormData() {
@@ -11,6 +11,22 @@ function baseFormData() {
 }
 
 describe("validateSubmissionFormData", () => {
+  it("normalizes extension-only uploads to a MIME type accepted by private Storage", () => {
+    const file = new File(["message"], "message.EML");
+    const formData = baseFormData();
+    formData.append("files", file);
+    expect(validateSubmissionFormData(formData).ok).toBe(true);
+    expect(getFileContentType(file)).toBe("message/rfc822");
+  });
+
+  it.each(["email", "url", "file name"])("rejects an overlong %s before database access", (field) => {
+    const formData = baseFormData();
+    formData.set("submittedText", "Suspicious content");
+    if (field === "email") formData.set("responseEmail", `${"x".repeat(250)}@example.com`);
+    if (field === "url") formData.set("urls", `https://example.com/${"x".repeat(2048)}`);
+    if (field === "file name") formData.append("files", new File(["x"], `${"x".repeat(500)}.pdf`));
+    expect(validateSubmissionFormData(formData).ok).toBe(false);
+  });
   it("accepts a valid text and URL submission", () => {
     const formData = baseFormData();
     formData.set("submittedText", "Please reset your bank password immediately.");

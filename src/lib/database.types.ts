@@ -8,6 +8,8 @@ export type Database = {
       submissions: {
         Row: {
           id: string;
+          submitted_by: string | null;
+          intake_completed_at: string | null;
           public_reference: string;
           response_email: string;
           submitted_text: string | null;
@@ -24,6 +26,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          intake_completed_at?: string | null;
           public_reference: string;
           response_email: string;
           submitted_text?: string | null;
@@ -39,6 +42,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          intake_completed_at?: string | null;
           public_reference?: string;
           response_email?: string;
           submitted_text?: string | null;
@@ -91,7 +95,10 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      is_admin: { Args: Record<string, never>; Returns: boolean };
+      complete_submission: { Args: { submission_id: string }; Returns: undefined };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

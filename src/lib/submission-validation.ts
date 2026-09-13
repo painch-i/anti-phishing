@@ -63,6 +63,11 @@ function parseUrls(value: string, errors: ValidationErrors): string[] {
     try {
       const url = new URL(rawUrl);
 
+      if (url.toString().length > 2_048) {
+        addError(errors, "urls", "Un lien dépasse la longueur maximale autorisée.");
+        return [];
+      }
+
       if (!["http:", "https:"].includes(url.protocol)) {
         addError(errors, "urls", "Seuls les liens HTTP et HTTPS sont acceptés.");
         return [];
@@ -94,6 +99,11 @@ function parseFiles(formData: FormData, errors: ValidationErrors): File[] {
       return false;
     }
 
+    if (file.name.length > 500) {
+      addError(errors, "files", "Le nom d'un fichier est trop long.");
+      return false;
+    }
+
     if (!hasAcceptedFileType(file)) {
       addError(errors, "files", `${file.name} n'est pas dans un format accepté.`);
       return false;
@@ -119,7 +129,7 @@ export function validateSubmissionFormData(formData: FormData): ValidationResult
 
   if (!responseEmail) {
     addError(errors, "responseEmail", "Ajoutez l'adresse email où recevoir la réponse.");
-  } else if (!isEmail(responseEmail)) {
+  } else if (responseEmail.length > 254 || !isEmail(responseEmail)) {
     addError(errors, "responseEmail", "Ajoutez une adresse email valide.");
   }
 

@@ -1,27 +1,42 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient, type CookieMethodsServer } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 import type { Database } from "@/lib/database.types";
-import { optionalEnv, requiredEnvFrom } from "@/lib/env";
+import { requiredEnvFrom } from "@/lib/env";
 
 const supabaseUrlEnvNames = ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const;
-const supabaseAdminKeyEnvNames = ["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+const supabasePublicKeyEnvNames = [
+  "SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_ANON_KEY"
+] as const;
 
-export const submissionAssetsBucket = optionalEnv(
-  "SUPABASE_SUBMISSION_ASSETS_BUCKET",
-  "submission-assets"
-);
+export const submissionAssetsBucket = "submission-assets";
 
-export function getSupabaseAdminClient() {
-  return createClient<Database>(
+export function createSupabaseClient(cookieMethods: CookieMethodsServer) {
+  return createServerClient<Database>(
     requiredEnvFrom(supabaseUrlEnvNames),
-    requiredEnvFrom(supabaseAdminKeyEnvNames),
+    requiredEnvFrom(supabasePublicKeyEnvNames),
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+      cookies: cookieMethods,
+      cookieOptions: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/"
       }
     }
   );
+}
+
+export type SupabaseClient = ReturnType<typeof createSupabaseClient>;
+
+export async function getSupabaseClient() {
+  const cookieStore = await cookies();
+
+  // Server Components only read cookies; proxy.ts persists session refreshes.
+  return createSupabaseClient({ getAll: () => cookieStore.getAll() });
 }

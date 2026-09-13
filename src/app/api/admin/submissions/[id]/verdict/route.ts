@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAdminSessionFromRequest } from "@/lib/admin-auth";
+import { getAdminSession } from "@/lib/admin-auth";
+import { createSupabaseRouteClient, isSameOrigin } from "@/lib/supabase-route";
 import { type Verdict, verdicts } from "@/lib/domain";
 import { recordVerdictAndSendEmail } from "@/lib/submissions";
 
@@ -17,8 +18,14 @@ function isVerdict(value: string): value is Verdict {
 }
 
 export async function POST(request: NextRequest, context: VerdictRouteContext) {
-  if (!getAdminSessionFromRequest(request)) {
-    return NextResponse.redirect(new URL("/admin/login?error=1", request.url), 303);
+  if (!isSameOrigin(request)) {
+    return new NextResponse(null, { status: 403 });
+  }
+
+  const { supabase, withSession } = createSupabaseRouteClient(request);
+
+  if (!(await getAdminSession(supabase))) {
+    return withSession(NextResponse.redirect(new URL("/admin/login?error=1", request.url), 303));
   }
 
   const { id } = await context.params;
@@ -27,22 +34,22 @@ export async function POST(request: NextRequest, context: VerdictRouteContext) {
   const explanation = String(formData.get("explanation") ?? "").trim();
   const detailUrl = new URL(`/admin/submissions/${id}`, request.url);
 
-  if (!isVerdict(verdict)) {
+  if (!isVerdict(verdict) || explanation.length > 2_000) {
     detailUrl.searchParams.set("error", "invalid-verdict");
-    return NextResponse.redirect(detailUrl, 303);
+    return withSession(NextResponse.redirect(detailUrl, 303));
   }
 
   try {
-    await recordVerdictAndSendEmail({
+    await recordVerdictAndSendEmail(supabase, {
       submissionId: id,
       verdict,
       explanation: explanation || null
     });
     detailUrl.searchParams.set("saved", "1");
   } catch (error) {
-    console.error(error);
+    console.error("Verdict delivery failed", error instanceof Error ? error.name : "UnknownError");
     detailUrl.searchParams.set("error", "email");
   }
 
-  return NextResponse.redirect(detailUrl, 303);
+  return withSession(NextResponse.redirect(detailUrl, 303));
 }
