@@ -10,6 +10,18 @@ export function requiredEnv(name: string): string {
   return value;
 }
 
+export function requiredEnvFrom(names: readonly [string, ...string[]]): string {
+  for (const name of names) {
+    const value = process.env[name];
+
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(`Missing required environment variable: ${names.join(" or ")}`);
+}
+
 export function optionalEnv(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }

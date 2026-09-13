@@ -55,8 +55,8 @@ Voir [`.env.example`](.env.example).
 
 Variables obligatoires :
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_URL` ou `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SECRET_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET`
@@ -64,6 +64,13 @@ Variables obligatoires :
 - `RESEND_FROM`
 
 `SUPABASE_SUBMISSION_ASSETS_BUCKET` vaut `submission-assets` par défaut.
+
+Avec l’intégration Supabase du Vercel Marketplace, les variables Supabase sont
+synchronisées automatiquement dans Vercel. L’application utilise une clé serveur
+Supabase (`SUPABASE_SECRET_KEY` ou l’ancien `SUPABASE_SERVICE_ROLE_KEY`) pour
+écrire côté serveur malgré les tables sous RLS et le bucket privé. Les clés
+publishable/anon (`SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+ne doivent pas être utilisées pour ces opérations admin.
 
 ## Base de données
 
