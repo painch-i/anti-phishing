@@ -16,6 +16,11 @@ export type SubmissionWithAssets = SubmissionRow & {
   assets: SubmissionAssetRow[];
 };
 
+function operationError(stage: string, error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(`${stage}: ${message}`, { cause: error });
+}
+
 function throwPostgrest(error: PostgrestError | null): void {
   if (error) {
     throw new Error(error.message);
@@ -100,21 +105,35 @@ export async function createSubmission(supabase: SupabaseClient, input: Submissi
 
   try {
     for (const file of input.files) {
-      const asset = await reserveAsset(supabase, submission, file);
+      let asset: SubmissionAssetRow;
+      try {
+        asset = await reserveAsset(supabase, submission, file);
+      } catch (error) {
+        throw operationError("reserveAsset", error);
+      }
       reservedAssets.push(asset);
-      const { error } = await supabase.storage.from(submissionAssetsBucket).upload(
-        asset.storage_path,
-        Buffer.from(await file.arrayBuffer()),
-        { contentType: asset.content_type, upsert: false }
-      );
+      let uploadError: unknown;
+      try {
+        ({ error: uploadError } = await supabase.storage.from(submissionAssetsBucket).upload(
+          asset.storage_path,
+          Buffer.from(await file.arrayBuffer()),
+          { contentType: asset.content_type, upsert: false }
+        ));
+      } catch (error) {
+        throw operationError("storage.upload", error);
+      }
 
-      if (error) {
-        throw new Error(error.message);
+      if (uploadError) {
+        throw operationError("storage.upload", uploadError);
       }
     }
 
-    const { error } = await supabase.rpc("complete_submission", { submission_id: submission.id });
-    throwPostgrest(error);
+    try {
+      const { error } = await supabase.rpc("complete_submission", { submission_id: submission.id });
+      throwPostgrest(error);
+    } catch (error) {
+      throw operationError("complete_submission", error);
+    }
   } catch (error) {
     // Keep reservations until Storage cleanup finishes: its policies use them.
     const uploadedPaths = reservedAssets.map((asset) => asset.storage_path);
