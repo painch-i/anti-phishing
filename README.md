@@ -17,6 +17,92 @@ L’objectif du produit n’est pas de présenter une détection automatique com
 
 > Ce dépôt est dédié au code du produit. La méthodologie d’analyse, les procédures internes et les éventuels outils opérationnels peuvent être documentés séparément.
 
+## MVP
+
+Le MVP implémente le parcours défini dans [`specs/mvp/spec.md`](specs/mvp/spec.md) :
+
+1. un visiteur soumet un contenu suspect sans créer de compte ;
+2. la demande et les fichiers sont enregistrés dans Supabase ;
+3. un opérateur se connecte à l’espace admin ;
+4. l’opérateur attribue un verdict et ajoute une explication facultative ;
+5. le verdict est envoyé au visiteur par email via Resend.
+
+Le produit reste volontairement prudent : aucun verdict n’est présenté comme une garantie absolue.
+
+## Stack
+
+- Next.js avec App Router et TypeScript ;
+- Supabase Postgres pour les demandes ;
+- Supabase Storage privé pour les fichiers transmis ;
+- Resend pour les emails transactionnels ;
+- authentification admin simple par cookie signé.
+
+La décision d’architecture initiale est documentée dans [`docs/adr/0001-mvp-stack.md`](docs/adr/0001-mvp-stack.md).
+
+## Installation
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+L’application est ensuite disponible sur `http://localhost:3000`.
+
+## Variables d’environnement
+
+Voir [`.env.example`](.env.example).
+
+Variables obligatoires :
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_FROM`
+
+`SUPABASE_SUBMISSION_ASSETS_BUCKET` vaut `submission-assets` par défaut.
+
+## Base de données
+
+Appliquer la migration Supabase :
+
+```bash
+supabase db push
+```
+
+La migration crée :
+
+- `public.submissions`
+- `public.submission_assets`
+- le bucket privé `submission-assets`
+
+L’application utilise la service role key uniquement côté serveur. Les visiteurs n’ont pas d’accès direct aux tables ou au bucket.
+
+## Commandes
+
+```bash
+npm run dev
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+## Limites MVP
+
+Le formulaire accepte au maximum :
+
+- 5 fichiers ;
+- 10 MB par fichier ;
+- 25 MB au total ;
+- 10 liens ;
+- images courantes, PDF, fichiers texte, emails et documents Word.
+
+Les liens transmis ne sont pas ouverts automatiquement dans l’admin. Les fichiers restent privés et sont accessibles à l’opérateur par URL signée temporaire.
+
 ## Méthodologie de développement
 
 Le projet est conçu pour pouvoir être développé et maintenu **principalement par langage naturel, via des agents de code**.
